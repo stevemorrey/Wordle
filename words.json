@@ -1,6 +1,6 @@
 {
   "solutions": [
-    "ABIDE", "ABOUT", "ABOVE", "ADAPT", "ADORE", "ADIEU", "ADULT", "AFTER", "AGILE", "AGREE", "AISLE", 
+    "ABIDE", "ABOUT", "ABOVE", "ADAPT", "ADORE", "ADULT", "AFTER", "AGILE", "AGREE", "AISLE", 
     "ALARM", "ALBUM", "ALERT", "ALIEN", "ALIVE", "ALLOW", "ALOFT", "ALONE", "ALONG", "ALOUD", 
     "ALTER", "AMUSE", "ANGEL", "ANGER", "ANGLE", "ANGRY", "ANKLE", "APPLY", "ARENA", "ARISE", 
     "ARMOR", "AROMA", "ASIDE", "ASSET", "AUDIO", "AVOID", "AWAKE", "AWARD", "AWARE", "AWFUL", 
@@ -42,7 +42,7 @@
     "ROUTE", "ROYAL", "RURAL", "SCALE", "SCENE", "SCOPE", "SCORE", "SENSE", "SERVE", "SHADE", 
     "SHAKE", "SHARE", "SHARP", "SHEET", "SHELF", "SHIFT", "SHINE", "SHIRT", "SHOCK", "SHORE", 
     "SHORT", "SHOUT", "SHOWN", "SIGHT", "SINCE", "SKILL", "SLEEP", "SLICE", "SLIDE", "SMALL", 
-    "SMART", "SMILE", "SMOKE", "SOARE", "SOLID", "SOLVE", "SOUND", "SOUTH", "SOOTH", "SPACE", "SPARE", "SPEAK", 
+    "SMART", "SMILE", "SMOKE", "SOLID", "SOLVE", "SOUND", "SOUTH", "SPACE", "SPARE", "SPEAK", 
     "SPEED", "SPEND", "SPITE", "SPLIT", "SPORT", "STAFF", "STAGE", "STAKE", "STAND", "STARE", 
     "START", "STATE", "STEAM", "STEEL", "STEEP", "STEER", "STICK", "STILL", "STOCK", "STONE", 
     "STOOD", "STORE", "STORM", "STORY", "STRIP", "STUCK", "STUDY", "STUFF", "STYLE", "SUGAR", 
@@ -55,7 +55,7 @@
     "WHERE", "WHICH", "WHILE", "WHITE", "WHOLE", "WHOSE", "WOMAN", "WORLD", "WORRY", "WORTH", 
     "WRITE", "WRONG", "YOUTH", "ZEBRA"
   ],
- "validGuesses": [
+  "validGuesses": [
     "APPLE", "BERRY", "CIDER", "DRINK", "EAGER", "FLUTE", "GRAPE", "HONEY", "INDEX", "JOKER", 
     "KNIFE", "LEMON", "MANGO", "NERVE", "OLIVE", "PEACH", "QUERY", "ROBOT", "SPOON", "TIGER", 
     "UPSET", "VODKA", "WHALE", "XENON", "YACHT", "ZORRO", "ABORT", "ACORN", "ACTOR", "ADAPT", 
