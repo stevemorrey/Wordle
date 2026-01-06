@@ -1,0 +1,57 @@
+/* Basic styles for Daily Word Game */
+:root {
+  --tile-size: 62px;
+  --tile-gap: 8px;
+  --color-correct: #6aaa64; /* green */
+  --color-present: #c9b458; /* yellow */
+  --color-absent: #787c7e;  /* gray */
+  --color-empty: #d3d6da;
+  --color-bg: #121213;
+  --color-text: #ffffff;
+}
+
+* { box-sizing: border-box; }
+body {
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  margin: 0; padding: 16px; background: var(--color-bg); color: var(--color-text);
+}
+header { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+header h1 { margin: 4px 0; font-size: 1.4rem; }
+#message { min-height: 24px; }
+
+#board {
+  display: grid;
+  grid-template-columns: repeat(5, var(--tile-size));
+  grid-auto-rows: var(--tile-size);
+  gap: var(--tile-gap);
+  justify-content: center;
+  margin: 16px auto;
+}
+.tile {
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--color-empty); border-radius: 4px;
+  font-weight: 700; font-size: 1.4rem; text-transform: uppercase;
+  background: transparent; color: var(--color-text);
+}
+.tile.filled { border-color: #565758; }
+.tile.correct { background: var(--color-correct); border-color: var(--color-correct); }
+.tile.present { background: var(--color-present); border-color: var(--color-present); }
+.tile.absent  { background: var(--color-absent);  border-color: var(--color-absent); }
+
+#keyboard {
+  display: grid; gap: 6px; justify-content: center; margin: 8px auto;
+  grid-template-columns: repeat(10, minmax(28px, 1fr));
+  max-width: 640px;
+}
+.key { padding: 8px; border-radius: 4px; border: none; cursor: pointer; font-weight: 600; }
+.key.correct { background: var(--color-correct); color: #fff; }
+.key.present { background: var(--color-present); color: #fff; }
+.key.absent  { background: var(--color-absent);  color: #fff; }
+.key.default { background: #d3d6da; color: #000; }
+.key.wide { grid-column: span 2; }
+
+#controls { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
+button { padding: 8px 12px; border-radius: 4px; border: none; cursor: pointer; }
+#shareBtn[disabled] { opacity: 0.6; cursor: not-allowed; }
+
+footer { text-align: center; margin-top: 20px; opacity: 0.7; }

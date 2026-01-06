@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Daily Word Game</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Daily Word Game</h1>
+    <p id="dateLabel"></p>
+    <div id="message"></div>
+  </header>
+
+  <main>
+    <div id="board" aria-label="Guess board" role="application"></div>
+
+    <div id="keyboard" aria-label="On-screen keyboard"></div>
+
+    <div id="controls">
+      <button id="shareBtn" disabled>Share Result</button>
+      <button id="resetBtn">Reset Today</button>
+    </div>
+
+    <details>
+      <summary>How to set the word of the day</summary>
+      <p>
+        To specify the word for a particular date, edit <code>daily-words.json</code>
+        and add an entry like:
+      </p>
+      <pre>{
+  "2026-01-06": "BRAVE",
+  "2026-01-07": "CLEAR"
+}</pre>
+      <p>
+        If no entry exists for today, the app will pick a word deterministically
+        from <code>words.json</code> based on the date.
+      </p>
+    </details>
+  </main>
+
+  <footer>
+    <small>© 2026 Daily Word Game. Not affiliated with Wordle®. Built for learning/demo.</small>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
