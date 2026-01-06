@@ -3,18 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Material Wordle Pro</title>
+    <title>Material Wordle + Stats</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #121213; color: white; font-family: sans-serif; touch-action: manipulation; }
-        .cell { width: 55px; height: 55px; border: 2px solid #3a3a3c; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; font-weight: bold; }
+        body { background-color: #121213; color: white; font-family: 'Segoe UI', sans-serif; touch-action: manipulation; }
+        .cell { width: 55px; height: 55px; border: 2px solid #3a3a3c; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; font-weight: bold; transition: all 0.2s; }
         .correct { background-color: #538d4e !important; border-color: #538d4e !important; }
         .present { background-color: #b59f3b !important; border-color: #b59f3b !important; }
         .absent { background-color: #3a3a3c !important; border-color: #3a3a3c !important; }
-        .key { background-color: #818384; border-radius: 4px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; user-select: none; }
+        .key { background-color: #818384; border-radius: 4px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; user-select: none; transition: opacity 0.1s; }
+        .key:active { opacity: 0.5; }
+        .modal-overlay { background-color: rgba(0,0,0,0.7); position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 50; }
     </style>
 </head>
 <body>
@@ -31,9 +33,15 @@
             const [currentRow, setCurrentRow] = useState(0);
             const [gameState, setGameState] = useState('playing');
             const [keyStatus, setKeyStatus] = useState({});
+            const [showStats, setShowStats] = useState(false);
+            const [stats, setStats] = useState({ games: 0, wins: 0, streak: 0 });
 
-            // Fetch words and set daily solution
             useEffect(() => {
+                // Load Stats from LocalStorage
+                const savedStats = JSON.parse(localStorage.getItem('wordle-stats')) || { games: 0, wins: 0, streak: 0 };
+                setStats(savedStats);
+
+                // Fetch Word List
                 fetch('./words.json')
                     .then(res => res.json())
                     .then(json => {
@@ -45,20 +53,29 @@
                     });
             }, []);
 
+            const updateStats = (won) => {
+                const newStats = {
+                    games: stats.games + 1,
+                    wins: stats.wins + (won ? 1 : 0),
+                    streak: won ? stats.streak + 1 : 0
+                };
+                setStats(newStats);
+                localStorage.setItem('wordle-stats', JSON.stringify(newStats));
+                setTimeout(() => setShowStats(true), 1500);
+            };
+
             const submitGuess = () => {
-                if (currentGuess.length !== 5) return;
+                if (currentGuess.length !== 5 || gameState !== 'playing') return;
                 const guess = currentGuess.toUpperCase();
                 
                 if (!data.validGuesses.includes(guess) && !data.solutions.includes(guess)) {
-                    alert("Not in word list");
-                    return;
+                    alert("Not in word list"); return;
                 }
 
                 const newGuesses = [...guesses];
                 newGuesses[currentRow] = guess;
                 setGuesses(newGuesses);
 
-                // Update keyboard colors
                 const newStatus = { ...keyStatus };
                 guess.split('').forEach((char, i) => {
                     if (char === solution[i]) newStatus[char] = 'correct';
@@ -67,9 +84,13 @@
                 });
                 setKeyStatus(newStatus);
 
-                if (guess === solution) setGameState('won');
-                else if (currentRow === 5) setGameState('lost');
-                else {
+                if (guess === solution) {
+                    setGameState('won');
+                    updateStats(true);
+                } else if (currentRow === 5) {
+                    setGameState('lost');
+                    updateStats(false);
+                } else {
                     setCurrentRow(currentRow + 1);
                     setCurrentGuess('');
                 }
@@ -88,34 +109,32 @@
                 return () => window.removeEventListener('keydown', onKeyDown);
             }, [currentGuess, currentRow, gameState, solution]);
 
-            const Keyboard = () => {
-                const rows = [
-                    ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
-                    ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
-                    ['ENTER', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '⌫']
-                ];
-                return (
-                    <div className="w-full max-w-[500px] mt-8 px-2">
-                        {rows.map((row, i) => (
-                            <div key={i} className="flex justify-center mb-2 gap-1.5 h-14">
-                                {row.map(key => (
-                                    <button
-                                        key={key}
-                                        onClick={() => handleInput(key)}
-                                        className={`key ${keyStatus[key] || ''} ${key.length > 1 ? 'px-4 text-xs' : 'flex-1'}`}
-                                    >
-                                        {key}
-                                    </button>
-                                ))}
-                            </div>
-                        ))}
+            const StatsModal = () => (
+                <div className="modal-overlay p-4" onClick={() => setShowStats(false)}>
+                    <div className="bg-[#1e1e1e] p-8 rounded-xl max-w-sm w-full text-center shadow-2xl border border-gray-700" onClick={e => e.stopPropagation()}>
+                        <h2 className="text-xl font-bold mb-6">STATISTICS</h2>
+                        <div className="flex justify-around mb-8">
+                            <div><div className="text-3xl font-bold">{stats.games}</div><div className="text-xs">Played</div></div>
+                            <div><div className="text-3xl font-bold">{stats.games ? Math.round((stats.wins/stats.games)*100) : 0}</div><div className="text-xs">Win %</div></div>
+                            <div><div className="text-3xl font-bold">{stats.streak}</div><div className="text-xs">Streak</div></div>
+                        </div>
+                        <button 
+                            className="bg-[#538d4e] w-full py-3 rounded font-bold hover:bg-green-600 transition"
+                            onClick={() => setShowStats(false)}
+                        >
+                            CLOSE
+                        </button>
                     </div>
-                );
-            };
+                </div>
+            );
 
             return (
-                <div className="flex flex-col items-center min-h-screen py-4">
-                    <h1 className="text-3xl font-black mb-8 border-b border-gray-700 w-full text-center pb-2">WORDLE</h1>
+                <div className="flex flex-col items-center min-h-screen py-4 px-2">
+                    <header className="flex justify-between items-center w-full max-w-[500px] mb-8 border-b border-gray-700 pb-2">
+                        <div className="w-10"></div>
+                        <h1 className="text-3xl font-black tracking-tighter">WORDLE</h1>
+                        <button onClick={() => setShowStats(true)} className="w-10 text-2xl">📊</button>
+                    </header>
                     
                     <div className="grid grid-rows-6 gap-1.5 mb-auto">
                         {guesses.map((guess, rIdx) => (
@@ -134,13 +153,27 @@
                         ))}
                     </div>
 
-                    {gameState !== 'playing' && (
-                        <div className="my-4 p-4 bg-white text-black rounded font-bold">
-                            {gameState === 'won' ? 'CORRECT! 🎉' : `WORD WAS: ${solution}`}
-                        </div>
-                    )}
+                    <div className="w-full max-w-[500px] mt-8">
+                        {[
+                            ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+                            ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+                            ['ENTER', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '⌫']
+                        ].map((row, i) => (
+                            <div key={i} className="flex justify-center mb-2 gap-1.5 h-14">
+                                {row.map(key => (
+                                    <button
+                                        key={key}
+                                        onClick={() => handleInput(key)}
+                                        className={`key ${keyStatus[key] || ''} ${key.length > 1 ? 'px-2 text-[10px]' : 'flex-1 text-sm'}`}
+                                    >
+                                        {key}
+                                    </button>
+                                ))}
+                            </div>
+                        ))}
+                    </div>
 
-                    <Keyboard />
+                    {showStats && <StatsModal />}
                 </div>
             );
         };
