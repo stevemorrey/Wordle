@@ -3,19 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Material Wordle + Stats</title>
+    <title>Insights Wordle Pro</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #121213; color: white; font-family: 'Segoe UI', sans-serif; touch-action: manipulation; }
-        .cell { width: 55px; height: 55px; border: 2px solid #3a3a3c; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; font-weight: bold; transition: all 0.2s; }
+        body { background-color: #121213; color: white; font-family: sans-serif; touch-action: manipulation; overflow: hidden; }
+        
+        /* Grid Cell Base */
+        .cell { 
+            width: 55px; height: 55px; border: 2px solid #3a3a3c; 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 1.8rem; font-weight: bold; text-transform: uppercase;
+            transition: border-color 0.2s;
+        }
+        .cell.filled { border-color: #565758; }
+
+        /* Flip Animation */
+        .flip { animation: flip 0.5s ease-in forwards; }
+        @keyframes flip {
+            0% { transform: rotateX(0); background-color: transparent; }
+            45% { transform: rotateX(90deg); background-color: transparent; }
+            55% { transform: rotateX(90deg); }
+            100% { transform: rotateX(0); }
+        }
+
+        /* State Colors (applied at the end of flip) */
         .correct { background-color: #538d4e !important; border-color: #538d4e !important; }
         .present { background-color: #b59f3b !important; border-color: #b59f3b !important; }
         .absent { background-color: #3a3a3c !important; border-color: #3a3a3c !important; }
-        .key { background-color: #818384; border-radius: 4px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; user-select: none; transition: opacity 0.1s; }
-        .key:active { opacity: 0.5; }
+
+        /* Keyboard */
+        .key { background-color: #818384; border-radius: 4px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; user-select: none; }
         .modal-overlay { background-color: rgba(0,0,0,0.7); position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 50; }
     </style>
 </head>
@@ -37,11 +57,9 @@
             const [stats, setStats] = useState({ games: 0, wins: 0, streak: 0 });
 
             useEffect(() => {
-                // Load Stats from LocalStorage
                 const savedStats = JSON.parse(localStorage.getItem('wordle-stats')) || { games: 0, wins: 0, streak: 0 };
                 setStats(savedStats);
 
-                // Fetch Word List
                 fetch('./words.json')
                     .then(res => res.json())
                     .then(json => {
@@ -52,17 +70,6 @@
                         setSolution(json.solutions[diff % json.solutions.length].toUpperCase());
                     });
             }, []);
-
-            const updateStats = (won) => {
-                const newStats = {
-                    games: stats.games + 1,
-                    wins: stats.wins + (won ? 1 : 0),
-                    streak: won ? stats.streak + 1 : 0
-                };
-                setStats(newStats);
-                localStorage.setItem('wordle-stats', JSON.stringify(newStats));
-                setTimeout(() => setShowStats(true), 1500);
-            };
 
             const submitGuess = () => {
                 if (currentGuess.length !== 5 || gameState !== 'playing') return;
@@ -76,13 +83,16 @@
                 newGuesses[currentRow] = guess;
                 setGuesses(newGuesses);
 
-                const newStatus = { ...keyStatus };
-                guess.split('').forEach((char, i) => {
-                    if (char === solution[i]) newStatus[char] = 'correct';
-                    else if (solution.includes(char) && newStatus[char] !== 'correct') newStatus[char] = 'present';
-                    else if (!newStatus[char]) newStatus[char] = 'absent';
-                });
-                setKeyStatus(newStatus);
+                // Keyboard updates delayed to match flip animation
+                setTimeout(() => {
+                    const newStatus = { ...keyStatus };
+                    guess.split('').forEach((char, i) => {
+                        if (char === solution[i]) newStatus[char] = 'correct';
+                        else if (solution.includes(char) && newStatus[char] !== 'correct') newStatus[char] = 'present';
+                        else if (!newStatus[char]) newStatus[char] = 'absent';
+                    });
+                    setKeyStatus(newStatus);
+                }, 1500);
 
                 if (guess === solution) {
                     setGameState('won');
@@ -94,6 +104,17 @@
                     setCurrentRow(currentRow + 1);
                     setCurrentGuess('');
                 }
+            };
+
+            const updateStats = (won) => {
+                const newStats = {
+                    games: stats.games + 1,
+                    wins: stats.wins + (won ? 1 : 0),
+                    streak: won ? stats.streak + 1 : 0
+                };
+                setStats(newStats);
+                localStorage.setItem('wordle-stats', JSON.stringify(newStats));
+                setTimeout(() => setShowStats(true), 2500);
             };
 
             const handleInput = (key) => {
@@ -109,25 +130,6 @@
                 return () => window.removeEventListener('keydown', onKeyDown);
             }, [currentGuess, currentRow, gameState, solution]);
 
-            const StatsModal = () => (
-                <div className="modal-overlay p-4" onClick={() => setShowStats(false)}>
-                    <div className="bg-[#1e1e1e] p-8 rounded-xl max-w-sm w-full text-center shadow-2xl border border-gray-700" onClick={e => e.stopPropagation()}>
-                        <h2 className="text-xl font-bold mb-6">STATISTICS</h2>
-                        <div className="flex justify-around mb-8">
-                            <div><div className="text-3xl font-bold">{stats.games}</div><div className="text-xs">Played</div></div>
-                            <div><div className="text-3xl font-bold">{stats.games ? Math.round((stats.wins/stats.games)*100) : 0}</div><div className="text-xs">Win %</div></div>
-                            <div><div className="text-3xl font-bold">{stats.streak}</div><div className="text-xs">Streak</div></div>
-                        </div>
-                        <button 
-                            className="bg-[#538d4e] w-full py-3 rounded font-bold hover:bg-green-600 transition"
-                            onClick={() => setShowStats(false)}
-                        >
-                            CLOSE
-                        </button>
-                    </div>
-                </div>
-            );
-
             return (
                 <div className="flex flex-col items-center min-h-screen py-4 px-2">
                     <header className="flex justify-between items-center w-full max-w-[500px] mb-8 border-b border-gray-700 pb-2">
@@ -142,18 +144,31 @@
                                 {Array(5).fill(0).map((_, cIdx) => {
                                     const char = rIdx === currentRow ? currentGuess[cIdx] : guess[cIdx];
                                     let cls = "cell";
-                                    if (rIdx < currentRow) {
-                                        if (guess[cIdx] === solution[cIdx]) cls += " correct";
-                                        else if (solution.includes(guess[cIdx])) cls += " present";
-                                        else cls += " absent";
+                                    let style = {};
+                                    
+                                    if (char) cls += " filled";
+                                    
+                                    if (rIdx < currentRow || (rIdx === currentRow && gameState !== 'playing' && guesses[rIdx])) {
+                                        cls += " flip";
+                                        style = { animationDelay: `${cIdx * 150}ms` };
+                                        
+                                        // If correct guess, everything is green. Else, check standard logic.
+                                        if (guesses[rIdx] === solution) {
+                                            cls += " correct";
+                                        } else {
+                                            if (guess[cIdx] === solution[cIdx]) cls += " correct";
+                                            else if (solution.includes(guess[cIdx])) cls += " present";
+                                            else cls += " absent";
+                                        }
                                     }
-                                    return <div key={cIdx} className={cls}>{char}</div>;
+                                    
+                                    return <div key={cIdx} className={cls} style={style}>{char}</div>;
                                 })}
                             </div>
                         ))}
                     </div>
 
-                    <div className="w-full max-w-[500px] mt-8">
+                    <div className="w-full max-w-[500px] mt-8 pb-4">
                         {[
                             ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
                             ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
@@ -173,7 +188,19 @@
                         ))}
                     </div>
 
-                    {showStats && <StatsModal />}
+                    {showStats && (
+                        <div className="modal-overlay p-4" onClick={() => setShowStats(false)}>
+                            <div className="bg-[#1e1e1e] p-8 rounded-xl max-w-sm w-full text-center shadow-2xl border border-gray-700" onClick={e => e.stopPropagation()}>
+                                <h2 className="text-xl font-bold mb-6 tracking-widest">STATISTICS</h2>
+                                <div className="flex justify-around mb-8">
+                                    <div><div className="text-3xl font-bold">{stats.games}</div><div className="text-xs uppercase">Played</div></div>
+                                    <div><div className="text-3xl font-bold">{stats.games ? Math.round((stats.wins/stats.games)*100) : 0}</div><div className="text-xs uppercase">Win %</div></div>
+                                    <div><div className="text-3xl font-bold">{stats.streak}</div><div className="text-xs uppercase">Streak</div></div>
+                                </div>
+                                <button className="bg-[#538d4e] w-full py-3 rounded font-bold hover:opacity-90" onClick={() => setShowStats(false)}>CLOSE</button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         };
