@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Wordle Pro - Desktop & Mobile</title>
+    <title>Wordle Pro - Victory Toast</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -27,6 +27,20 @@
 
         .key { border-radius: 4px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background-color 0.3s; }
         .modal-overlay { background-color: rgba(0,0,0,0.85); position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
+        
+        /* Toast Animation */
+        .toast {
+            position: fixed; top: 10%; left: 50%; transform: translateX(-50%);
+            background-color: white; color: black; padding: 12px 20px;
+            border-radius: 4px; font-weight: bold; z-index: 100;
+            animation: toast-in-out 2s forwards;
+        }
+        @keyframes toast-in-out {
+            0% { opacity: 0; transform: translate(-50%, -20px); }
+            15% { opacity: 1; transform: translate(-50%, 0); }
+            85% { opacity: 1; transform: translate(-50%, 0); }
+            100% { opacity: 0; transform: translate(-50%, -20px); }
+        }
     </style>
 </head>
 <body>
@@ -34,6 +48,8 @@
 
     <script type="text/babel">
         const { useState, useEffect, useCallback } = React;
+
+        const TOAST_MESSAGES = ["Genius", "Magnificent", "Impressive", "Splendid", "Great", "Phew"];
 
         const Wordle = () => {
             const [solution, setSolution] = useState('');
@@ -44,12 +60,12 @@
             const [gameState, setGameState] = useState('playing');
             const [keyStatus, setKeyStatus] = useState({});
             const [showStats, setShowStats] = useState(false);
+            const [toast, setToast] = useState(null);
             const [stats, setStats] = useState({ games: 0, wins: 0, streak: 0 });
             const [timeToNext, setTimeToNext] = useState('');
 
             const getTodayKey = () => new Date().toISOString().split('T')[0];
 
-            // Setup and Restore Logic
             useEffect(() => {
                 const todayKey = getTodayKey();
                 const savedStats = JSON.parse(localStorage.getItem('wordle-stats')) || { games: 0, wins: 0, streak: 0 };
@@ -84,20 +100,26 @@
             useEffect(() => {
                 if (!solution) return;
                 localStorage.setItem(`wordle-progress-${getTodayKey()}`, JSON.stringify({ guesses, currentRow, gameState }));
-            }, [guesses, currentRow, gameState]);
+            }, [guesses, currentRow, gameState, solution]);
 
-            // Universal Input Handler (Shared by Physical and Virtual Keyboards)
             const handleInput = useCallback((key) => {
                 if (gameState !== 'playing') return;
 
                 if (key === 'ENTER') {
                     if (currentGuess.length !== 5) return;
                     const guess = currentGuess.toUpperCase();
-                    if (!data.validGuesses.includes(guess) && !data.solutions.includes(guess)) return alert("Not in word list");
+                    if (!data.validGuesses.includes(guess) && !data.solutions.includes(guess)) {
+                        setToast("Not in word list");
+                        setTimeout(() => setToast(null), 2000);
+                        return;
+                    }
 
                     const newGuesses = [...guesses];
                     newGuesses[currentRow] = guess;
                     setGuesses(newGuesses);
+
+                    const isWin = guess === solution;
+                    const isLoss = !isWin && currentRow === 5;
 
                     setTimeout(() => {
                         const newStatus = { ...keyStatus };
@@ -109,11 +131,13 @@
                         setKeyStatus(newStatus);
                     }, 1500);
 
-                    if (guess === solution) {
+                    if (isWin) {
                         setGameState('won');
+                        setTimeout(() => setToast(TOAST_MESSAGES[currentRow]), 1500);
                         updateStats(true);
-                    } else if (currentRow === 5) {
+                    } else if (isLoss) {
                         setGameState('lost');
+                        setTimeout(() => setToast(solution), 1500);
                         updateStats(false);
                     } else {
                         setCurrentRow(currentRow + 1);
@@ -126,12 +150,8 @@
                 }
             }, [currentGuess, gameState, data, guesses, currentRow, solution, keyStatus]);
 
-            // Physical Keyboard Listener
             useEffect(() => {
-                const onKeyDown = (e) => {
-                    const key = e.key.toUpperCase();
-                    handleInput(key);
-                };
+                const onKeyDown = (e) => handleInput(e.key.toUpperCase());
                 window.addEventListener('keydown', onKeyDown);
                 return () => window.removeEventListener('keydown', onKeyDown);
             }, [handleInput]);
@@ -151,29 +171,16 @@
                 const newStats = { games: stats.games + 1, wins: stats.wins + (won ? 1 : 0), streak: won ? stats.streak + 1 : 0 };
                 setStats(newStats);
                 localStorage.setItem('wordle-stats', JSON.stringify(newStats));
-                setTimeout(() => setShowStats(true), 2500);
-            };
-
-            const generateShareText = () => {
-                let text = `Wordle ${getTodayKey()}\n\n`;
-                guesses.filter(g => g).forEach(guess => {
-                    let row = "";
-                    guess.split('').forEach((char, i) => {
-                        if (char === solution[i]) row += "🟩";
-                        else if (solution.includes(char)) row += "🟨";
-                        else row += "⬛";
-                    });
-                    text += row + "\n";
-                });
-                navigator.clipboard.writeText(text);
-                alert("Results copied to clipboard!");
+                setTimeout(() => { setToast(null); setShowStats(true); }, 3500);
             };
 
             return (
-                <div className="flex flex-col items-center min-h-screen py-4 px-2 max-w-md mx-auto">
+                <div className="flex flex-col items-center min-h-screen py-4 px-2 max-w-md mx-auto relative">
+                    {toast && <div className="toast">{toast}</div>}
+                    
                     <header className="flex justify-between items-center w-full mb-8 border-b border-gray-800 pb-2">
                         <div className="w-10"></div>
-                        <h1 className="text-3xl font-black tracking-tighter">Insights WORDLE</h1>
+                        <h1 className="text-3xl font-black tracking-tighter">WORDLE</h1>
                         <button onClick={() => setShowStats(true)} className="text-xl">📊</button>
                     </header>
                     
@@ -181,13 +188,15 @@
                         {guesses.map((guess, rIdx) => (
                             <div key={rIdx} className="grid grid-cols-5 gap-1.5">
                                 {Array(5).fill(0).map((_, cIdx) => {
-                                    const char = rIdx === currentRow ? currentGuess[cIdx] : guess[cIdx];
+                                    let char = (rIdx === currentRow && gameState === 'playing') ? currentGuess[cIdx] : (guess ? guess[cIdx] : "");
                                     let cls = "cell";
                                     let style = {};
-                                    if (guess && (rIdx < currentRow || gameState !== 'playing')) {
-                                        let stateClass = guesses[rIdx] === solution ? "cell-correct" : (guess[cIdx] === solution[cIdx] ? "cell-correct" : (solution.includes(guess[cIdx]) ? "cell-present" : "cell-absent"));
-                                        const isFresh = (rIdx === currentRow || (rIdx === currentRow - 1 && currentGuess === ""));
-                                        cls += ` ${stateClass} ${isFresh ? 'flip' : 'revealed'}`;
+                                    const isRevealedRow = rIdx < currentRow || (gameState !== 'playing' && guess);
+                                    
+                                    if (isRevealedRow) {
+                                        let stateClass = (guess === solution || guess[cIdx] === solution[cIdx]) ? "cell-correct" : (solution.includes(guess[cIdx]) ? "cell-present" : "cell-absent");
+                                        const isNewFlip = (rIdx === currentRow || (rIdx === currentRow - 1 && currentGuess === ""));
+                                        cls += ` ${stateClass} ${isNewFlip ? 'flip' : 'revealed'}`;
                                         style = { animationDelay: `${cIdx * 150}ms` };
                                     } else if (char) cls += " border-[#565758]";
                                     return <div key={cIdx} className={cls} style={style}>{char}</div>;
@@ -213,18 +222,17 @@
                     {showStats && (
                         <div className="modal-overlay" onClick={() => setShowStats(false)}>
                             <div className="bg-[#1e1e1e] p-6 rounded-xl w-full max-w-xs text-center border border-gray-700" onClick={e => e.stopPropagation()}>
-                                <h2 className="font-bold mb-4 tracking-widest uppercase">Statistics</h2>
+                                <h2 className="font-bold mb-4 tracking-widest uppercase text-gray-400">Statistics</h2>
                                 <div className="flex justify-around mb-6">
-                                    <div><div className="text-2xl font-bold">{stats.games}</div><div className="text-[10px] uppercase text-gray-400">Played</div></div>
-                                    <div><div className="text-2xl font-bold">{stats.games ? Math.round((stats.wins/stats.games)*100) : 0}</div><div className="text-[10px] uppercase text-gray-400">Win %</div></div>
-                                    <div><div className="text-2xl font-bold">{stats.streak}</div><div className="text-[10px] uppercase text-gray-400">Streak</div></div>
+                                    <div><div className="text-2xl font-bold">{stats.games}</div><div className="text-[10px] uppercase text-gray-500">Played</div></div>
+                                    <div><div className="text-2xl font-bold">{stats.games ? Math.round((stats.wins/stats.games)*100) : 0}</div><div className="text-[10px] uppercase text-gray-500">Win %</div></div>
+                                    <div><div className="text-2xl font-bold">{stats.streak}</div><div className="text-[10px] uppercase text-gray-500">Streak</div></div>
                                 </div>
                                 <div className="border-t border-gray-800 pt-4 mb-6">
-                                    <p className="text-xs uppercase text-gray-400">Next Word In</p>
+                                    <p className="text-xs uppercase text-gray-500 mb-1">Next Word In</p>
                                     <p className="text-2xl font-mono">{timeToNext}</p>
                                 </div>
-                                <button className="bg-[#538d4e] w-full py-3 rounded font-bold uppercase mb-2" onClick={generateShareText}>Share Results 📋</button>
-                                <button className="text-gray-400 text-xs uppercase" onClick={() => setShowStats(false)}>Close</button>
+                                <button className="bg-[#538d4e] w-full py-3 rounded font-bold uppercase" onClick={() => setShowStats(false)}>Close</button>
                             </div>
                         </div>
                     )}
