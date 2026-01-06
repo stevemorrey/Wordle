@@ -3,38 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Insights Wordle Pro</title>
+    <title>Persistent Material Wordle</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #121213; color: white; font-family: sans-serif; touch-action: manipulation; overflow: hidden; }
-        
-        /* Grid Cell Base */
+        body { background-color: #121213; color: white; font-family: sans-serif; touch-action: manipulation; }
         .cell { 
             width: 55px; height: 55px; border: 2px solid #3a3a3c; 
             display: flex; align-items: center; justify-content: center; 
             font-size: 1.8rem; font-weight: bold; text-transform: uppercase;
-            transition: border-color 0.2s;
         }
-        .cell.filled { border-color: #565758; }
+        
+        /* The Flip Animation */
+        .flip { animation: flip-sequence 0.6s ease-in forwards; }
 
-        /* Flip Animation */
-        .flip { animation: flip 0.5s ease-in forwards; }
-        @keyframes flip {
+        @keyframes flip-sequence {
             0% { transform: rotateX(0); background-color: transparent; }
-            45% { transform: rotateX(90deg); background-color: transparent; }
-            55% { transform: rotateX(90deg); }
-            100% { transform: rotateX(0); }
+            45% { transform: rotateX(90deg); background-color: transparent; border-color: #3a3a3c; }
+            50% { background-color: var(--target-bg); border-color: var(--target-bg); }
+            100% { transform: rotateX(0); background-color: var(--target-bg); border-color: var(--target-bg); }
         }
 
-        /* State Colors (applied at the end of flip) */
-        .correct { background-color: #538d4e !important; border-color: #538d4e !important; }
-        .present { background-color: #b59f3b !important; border-color: #b59f3b !important; }
-        .absent { background-color: #3a3a3c !important; border-color: #3a3a3c !important; }
+        /* Classes to set the CSS Variable for the animation */
+        .cell-correct { --target-bg: #538d4e; }
+        .cell-present { --target-bg: #b59f3b; }
+        .cell-absent { --target-bg: #3a3a3c; }
 
-        /* Keyboard */
+        /* Persistence for already revealed rows (no animation on load) */
+        .revealed { background-color: var(--target-bg); border-color: var(--target-bg); }
+
         .key { background-color: #818384; border-radius: 4px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; user-select: none; }
         .modal-overlay { background-color: rgba(0,0,0,0.7); position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 50; }
     </style>
@@ -56,8 +55,12 @@
             const [showStats, setShowStats] = useState(false);
             const [stats, setStats] = useState({ games: 0, wins: 0, streak: 0 });
 
+            // 1. Initial Load: Fetch words, stats, and TODAY'S progress
             useEffect(() => {
+                const todayKey = new Date().toISOString().split('T')[0];
                 const savedStats = JSON.parse(localStorage.getItem('wordle-stats')) || { games: 0, wins: 0, streak: 0 };
+                const savedProgress = JSON.parse(localStorage.getItem(`wordle-progress-${todayKey}`));
+                
                 setStats(savedStats);
 
                 fetch('./words.json')
@@ -67,9 +70,36 @@
                         const start = new Date(2024, 0, 1);
                         const today = new Date();
                         const diff = Math.floor((today - start) / (1000 * 60 * 60 * 24));
-                        setSolution(json.solutions[diff % json.solutions.length].toUpperCase());
+                        const sol = json.solutions[diff % json.solutions.length].toUpperCase();
+                        setSolution(sol);
+
+                        // If player has already started today, restore their board
+                        if (savedProgress) {
+                            setGuesses(savedProgress.guesses);
+                            setCurrentRow(savedProgress.currentRow);
+                            setGameState(savedProgress.gameState);
+                            
+                            // Rebuild keyboard status from saved guesses
+                            const newStatus = {};
+                            savedProgress.guesses.filter(g => g).forEach(guess => {
+                                guess.split('').forEach((char, i) => {
+                                    if (char === sol[i]) newStatus[char] = 'cell-correct';
+                                    else if (sol.includes(char) && newStatus[char] !== 'cell-correct') newStatus[char] = 'cell-present';
+                                    else if (!newStatus[char]) newStatus[char] = 'cell-absent';
+                                });
+                            });
+                            setKeyStatus(newStatus);
+                        }
                     });
             }, []);
+
+            // 2. Save Progress whenever guesses change
+            useEffect(() => {
+                if (!solution) return;
+                const todayKey = new Date().toISOString().split('T')[0];
+                const progress = { guesses, currentRow, gameState };
+                localStorage.setItem(`wordle-progress-${todayKey}`, JSON.stringify(progress));
+            }, [guesses, currentRow, gameState]);
 
             const submitGuess = () => {
                 if (currentGuess.length !== 5 || gameState !== 'playing') return;
@@ -83,16 +113,16 @@
                 newGuesses[currentRow] = guess;
                 setGuesses(newGuesses);
 
-                // Keyboard updates delayed to match flip animation
+                // Update keyboard status (Delayed to match animation)
                 setTimeout(() => {
                     const newStatus = { ...keyStatus };
                     guess.split('').forEach((char, i) => {
-                        if (char === solution[i]) newStatus[char] = 'correct';
-                        else if (solution.includes(char) && newStatus[char] !== 'correct') newStatus[char] = 'present';
-                        else if (!newStatus[char]) newStatus[char] = 'absent';
+                        if (char === solution[i]) newStatus[char] = 'cell-correct';
+                        else if (solution.includes(char) && newStatus[char] !== 'cell-correct') newStatus[char] = 'cell-present';
+                        else if (!newStatus[char]) newStatus[char] = 'cell-absent';
                     });
                     setKeyStatus(newStatus);
-                }, 1500);
+                }, 1800);
 
                 if (guess === solution) {
                     setGameState('won');
@@ -134,7 +164,7 @@
                 <div className="flex flex-col items-center min-h-screen py-4 px-2">
                     <header className="flex justify-between items-center w-full max-w-[500px] mb-8 border-b border-gray-700 pb-2">
                         <div className="w-10"></div>
-                        <h1 className="text-3xl font-black tracking-tighter">Insights WORDLE</h1>
+                        <h1 className="text-3xl font-black tracking-tighter">WORDLE</h1>
                         <button onClick={() => setShowStats(true)} className="w-10 text-2xl">📊</button>
                     </header>
                     
@@ -146,20 +176,21 @@
                                     let cls = "cell";
                                     let style = {};
                                     
-                                    if (char) cls += " filled";
-                                    
-                                    if (rIdx < currentRow || (rIdx === currentRow && gameState !== 'playing' && guesses[rIdx])) {
-                                        cls += " flip";
+                                    // Determine the logic for the state
+                                    let stateClass = "";
+                                    if (guess && rIdx <= currentRow) {
+                                        if (guess === solution) stateClass = "cell-correct";
+                                        else if (guess[cIdx] === solution[cIdx]) stateClass = "cell-correct";
+                                        else if (solution.includes(guess[cIdx])) stateClass = "cell-present";
+                                        else stateClass = "cell-absent";
+                                    }
+
+                                    // Reveal logic
+                                    if (rIdx < currentRow || (gameState !== 'playing' && rIdx === currentRow)) {
+                                        // If it was from a previous session, show instantly. If just guessed, flip.
+                                        const isNewGuess = rIdx === currentRow || (rIdx === (currentRow - 1) && currentGuess === "");
+                                        cls += ` ${stateClass} ${isNewGuess ? 'flip' : 'revealed'}`;
                                         style = { animationDelay: `${cIdx * 150}ms` };
-                                        
-                                        // If correct guess, everything is green. Else, check standard logic.
-                                        if (guesses[rIdx] === solution) {
-                                            cls += " correct";
-                                        } else {
-                                            if (guess[cIdx] === solution[cIdx]) cls += " correct";
-                                            else if (solution.includes(guess[cIdx])) cls += " present";
-                                            else cls += " absent";
-                                        }
                                     }
                                     
                                     return <div key={cIdx} className={cls} style={style}>{char}</div>;
@@ -180,6 +211,7 @@
                                         key={key}
                                         onClick={() => handleInput(key)}
                                         className={`key ${keyStatus[key] || ''} ${key.length > 1 ? 'px-2 text-[10px]' : 'flex-1 text-sm'}`}
+                                        style={{backgroundColor: keyStatus[key] === 'cell-correct' ? '#538d4e' : keyStatus[key] === 'cell-present' ? '#b59f3b' : keyStatus[key] === 'cell-absent' ? '#3a3a3c' : '#818384'}}
                                     >
                                         {key}
                                     </button>
