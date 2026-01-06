@@ -1,12 +1,6 @@
 {
-  "solutions": [
-    "REACT", 
-    "BOOKS", 
-    "GLASS", 
-    "LIGHT", 
-    "PHONE", 
-    "SMART", 
-    "CLOUD"],
+  "solutions": [ 
+    "SMART", ],
   "validGuesses": [
     "APPLE", 
     "BEACH", 
