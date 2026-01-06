@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Wordle Pro - Shareable Results</title>
+    <title>Wordle Pro - Text Share</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -24,8 +24,21 @@
         .revealed { background-color: var(--target-bg); border-color: var(--target-bg); }
         .key { border-radius: 4px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background-color 0.3s; }
         .modal-overlay { background-color: rgba(0,0,0,0.85); position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
-        .toast { position: fixed; top: 10%; left: 50%; transform: translateX(-50%); background-color: white; color: black; padding: 12px 20px; border-radius: 4px; font-weight: bold; z-index: 100; animation: toast-in-out 2s forwards; }
-        @keyframes toast-in-out { 0% { opacity: 0; transform: translate(-50%, -20px); } 15% { opacity: 1; transform: translate(-50%, 0); } 85% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, -20px); } }
+        
+        /* Material Toast */
+        .toast {
+            position: fixed; top: 15%; left: 50%; transform: translateX(-50%);
+            background-color: white; color: black; padding: 10px 20px;
+            border-radius: 4px; font-weight: bold; z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            animation: toast-fade 2s forwards;
+        }
+        @keyframes toast-fade {
+            0% { opacity: 0; transform: translate(-50%, -20px); }
+            10% { opacity: 1; transform: translate(-50%, 0); }
+            90% { opacity: 1; transform: translate(-50%, 0); }
+            100% { opacity: 0; transform: translate(-50%, -20px); }
+        }
     </style>
 </head>
 <body>
@@ -85,28 +98,25 @@
                 localStorage.setItem(`wordle-progress-${getTodayKey()}`, JSON.stringify({ guesses, currentRow, gameState }));
             }, [guesses, currentRow, gameState, solution]);
 
-            const handleShare = async () => {
-                let shareText = `Wordle ${getTodayKey()} ${gameState === 'won' ? currentRow + 1 : 'X'}/6\n\n`;
+            // CLIPBOARD SHARE LOGIC
+            const copyResultToClipboard = () => {
+                const score = gameState === 'won' ? currentRow + 1 : 'X';
+                let text = `Wordle ${getTodayKey()} ${score}/6\n\n`;
                 
                 guesses.filter(g => g).forEach(guess => {
-                    let rowEmojis = "";
+                    let emojis = "";
                     guess.split('').forEach((char, i) => {
-                        if (char === solution[i]) rowEmojis += "🟩";
-                        else if (solution.includes(char)) rowEmojis += "🟨";
-                        else rowEmojis += "⬛";
+                        if (char === solution[i]) emojis += "🟩";
+                        else if (solution.includes(char)) emojis += "🟨";
+                        else emojis += "⬛";
                     });
-                    shareText += rowEmojis + "\n";
+                    text += emojis + "\n";
                 });
 
-                if (navigator.share) {
-                    try {
-                        await navigator.share({ text: shareText });
-                    } catch (err) { console.log("Share failed", err); }
-                } else {
-                    navigator.clipboard.writeText(shareText);
+                navigator.clipboard.writeText(text).then(() => {
                     setToast("Copied to clipboard!");
                     setTimeout(() => setToast(null), 2000);
-                }
+                });
             };
 
             const handleInput = useCallback((key) => {
@@ -123,9 +133,6 @@
                     newGuesses[currentRow] = guess;
                     setGuesses(newGuesses);
                     
-                    const isWin = guess === solution;
-                    const isLoss = !isWin && currentRow === 5;
-
                     setTimeout(() => {
                         const newStatus = { ...keyStatus };
                         guess.split('').forEach((char, i) => {
@@ -136,8 +143,8 @@
                         setKeyStatus(newStatus);
                     }, 1500);
 
-                    if (isWin) { setGameState('won'); updateStats(true); }
-                    else if (isLoss) { setGameState('lost'); updateStats(false); }
+                    if (guess === solution) { setGameState('won'); updateStats(true); }
+                    else if (currentRow === 5) { setGameState('lost'); updateStats(false); }
                     else { setCurrentRow(currentRow + 1); setCurrentGuess(''); }
                 } else if (key === 'BACKSPACE' || key === '⌫') { setCurrentGuess(p => p.slice(0, -1)); }
                 else if (currentGuess.length < 5 && /^[A-Z]$/.test(key)) { setCurrentGuess(p => p + key); }
@@ -215,9 +222,14 @@
                                     <p className="text-xs uppercase text-gray-500 mb-1">Next Word In</p>
                                     <p className="text-2xl font-mono">{timeToNext}</p>
                                 </div>
-                                <button className="bg-[#538d4e] w-full py-3 rounded font-bold uppercase mb-3 flex items-center justify-center gap-2" onClick={handleShare}>
-                                    Share Result 🔗
-                                </button>
+                                {gameState !== 'playing' && (
+                                    <button 
+                                        className="bg-[#538d4e] w-full py-3 rounded font-bold uppercase mb-4 flex items-center justify-center gap-2 hover:bg-green-600 active:scale-95 transition"
+                                        onClick={copyResultToClipboard}
+                                    >
+                                        Share Results 📋
+                                    </button>
+                                )}
                                 <button className="text-gray-400 text-xs uppercase" onClick={() => setShowStats(false)}>Close</button>
                             </div>
                         </div>
